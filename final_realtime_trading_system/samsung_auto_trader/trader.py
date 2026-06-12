@@ -40,6 +40,7 @@ class Trader:
         self.account_service = account_service
         self.order_service = order_service
         self.logger = logger
+        self._should_stop = False
 
     def run(self) -> None:
         """
@@ -87,6 +88,10 @@ class Trader:
             except Exception as exc:
                 self.logger.exception("Trading cycle failed. error=%s", exc)
 
+            if self._should_stop:
+                self.logger.info("Stop condition reached. Stopping trader.")
+                break
+
             self._sleep_until_next_poll()
 
         self.logger.info("Samsung auto trader stopped.")
@@ -108,8 +113,20 @@ class Trader:
 
         current_price = self.market_data_service.get_current_price(symbol).price
 
-        buy_price = max(current_price - offset, 1)
-        sell_price = current_price + offset
+        raw_buy_price = max(current_price - offset, 1)
+        raw_sell_price = current_price + offset
+
+        buy_price = self._round_down_to_tick(raw_buy_price)
+        sell_price = self._round_up_to_tick(raw_sell_price)
+
+        self.logger.info(
+            "Order prices calculated. current_price=%s raw_buy=%s buy_price=%s raw_sell=%s sell_price=%s",
+            current_price,
+            raw_buy_price,
+            buy_price,
+            raw_sell_price,
+            sell_price,
+        )
 
         before_snapshot = self.account_service.get_account_snapshot()
         self._log_snapshot(label="before_order", snapshot=before_snapshot, symbol=symbol)
@@ -149,6 +166,14 @@ class Trader:
                 "No order submitted in this cycle. Skipping after-order balance check to reduce API usage."
             )
             return
+
+        if self.settings.stop_after_first_successful_order:
+            successful_orders = [order for order in submitted_orders if order.success]
+            if successful_orders:
+                self._should_stop = True
+                self.logger.info(
+                    "At least one order was submitted successfully. The trader will stop after this cycle."
+                )
 
         after_snapshot = self.account_service.get_account_snapshot()
         self._log_snapshot(label="after_order", snapshot=after_snapshot, symbol=symbol)
@@ -249,6 +274,36 @@ class Trader:
                 order.quantity,
                 order.price,
             )
+
+    def _get_tick_size(self, price: int) -> int:
+        """
+        Return Korean domestic stock tick size.
+
+        This table is used to avoid invalid order prices.
+        For example, a price like 334250 is invalid when the tick size is 500.
+        """
+
+        if price < 2000:
+            return 1
+        if price < 5000:
+            return 5
+        if price < 20000:
+            return 10
+        if price < 50000:
+            return 50
+        if price < 100000:
+            return 100
+        if price < 500000:
+            return 500
+        return 1000
+
+    def _round_down_to_tick(self, price: int) -> int:
+        tick = self._get_tick_size(price)
+        return max((price // tick) * tick, tick)
+
+    def _round_up_to_tick(self, price: int) -> int:
+        tick = self._get_tick_size(price)
+        return ((price + tick - 1) // tick) * tick
 
     def _sleep_until_next_poll(self) -> None:
         seconds = self.settings.poll_interval_seconds

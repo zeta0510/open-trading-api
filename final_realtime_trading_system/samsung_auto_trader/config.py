@@ -33,6 +33,10 @@ class Settings:
     # Very small order size for mock trading safety
     order_quantity: int = 1
 
+    # Stop automatically after the first successfully submitted order.
+    # This prevents repeated orders during testing.
+    stop_after_first_successful_order: bool = True
+
     # Trading window
     trading_start: time = time(9, 10)
     trading_end: time = time(15, 30)
