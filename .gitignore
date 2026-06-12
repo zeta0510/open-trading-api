@@ -189,3 +189,13 @@ config.yaml
 final_realtime_trading_system/samsung_auto_trader/token_cache.json
 final_realtime_trading_system/samsung_auto_trader/logs/
 *.log
+
+# ===== Project secrets / runtime files =====
+.env
+*.env
+token_cache.json
+logs/
+*.log
+kis_devlp.yaml
+final_realtime_trading_system/samsung_auto_trader/token_cache.json
+final_realtime_trading_system/samsung_auto_trader/logs/
