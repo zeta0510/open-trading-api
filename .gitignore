@@ -176,3 +176,16 @@ backtester/examples/output/*.py
 settings.local.json
 
 .serena/
+# Final project secrets and runtime files
+.env
+config.yaml
+final_realtime_trading_system/samsung_auto_trader/token_cache.json
+final_realtime_trading_system/samsung_auto_trader/logs/
+*.log
+
+# Final project secrets and runtime files
+.env
+config.yaml
+final_realtime_trading_system/samsung_auto_trader/token_cache.json
+final_realtime_trading_system/samsung_auto_trader/logs/
+*.log
